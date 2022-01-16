@@ -1,0 +1,105 @@
+import java.util.*;
+
+class CoreVar {
+    Core type;
+    Integer value;
+
+    public CoreVar(Core t){
+        type = t;
+        if(type == Core.INT){
+            value = 0;
+        } else{
+            value = null;
+        }
+    }
+}
+
+class Executor {
+
+    static HashMap<String, CoreVar> globalSpace;
+    static Stack<HashMap<String, CoreVar>> stackSpace;
+    static ArrayList<Integer> heapSpace;
+
+    static Scanner S;
+
+    static void initialize(Scanner scanner){
+        globalSpace = new HashMap<String, CoreVar>();
+        stackSpace = new Stack<HashMap<String, CoreVar>>(); 
+        //stackSpace is an empty stack at this point, need to remember to do stackSpace.push(new HashMap<String, CoreVar>()) later
+        heapSpace = new ArrayList<Integer>();
+        S = scanner;    
+    }
+
+    static void newInHeap(String id){
+        CoreVar c = getCoreVarFromSpace(id);
+        if(c.type != Core.REF){
+            System.out.println("ERROR: The " + id + " here needs to have been declared as ref. It cannot perform new. (Assign)");
+            System.exit(1);
+        }
+        heapSpace.add(null);
+        c.value = heapSpace.size()-1;
+    }
+
+    static CoreVar getCoreVarFromSpace(String id){
+        CoreVar result = null;
+        // find the id from the last in the stackSpace, which means it is the nearest variable in local
+        for(int i = stackSpace.size()-1; i >= 0; i--){
+            if(stackSpace.get(i).containsKey(id)){
+                result = stackSpace.get(i).get(id);
+                break;
+            }
+        }
+        // if it is not in the local variable, find it in global variable
+        if(result == null){
+            result = globalSpace.get(id);
+        }
+        return result;
+    }
+
+    static int getValue(String id){
+        CoreVar c = getCoreVarFromSpace(id);
+        int result = c.value;
+        if(c.type == Core.REF){
+            if(result < heapSpace.size()){
+                if(heapSpace.get(result) == null){
+                    System.out.println("ERROR: The " + id + " cannot be null. (Factor)");
+                    System.exit(1);
+                }
+                result = heapSpace.get(result);
+            }else{
+                System.out.println("ERROR: The " + id + " has not been allocated in heap. Invalid read. (Factor)");
+                System.exit(1);
+            }
+        }
+        return result;
+    }
+
+    static void setValue(String id, int value){
+        CoreVar c = getCoreVarFromSpace(id);
+        if(c.type == Core.REF){
+            if(c.value == null){
+                System.out.println("ERROR: The " + id + " cannot be null. Invalid write. (Assign)");
+                System.exit(1);
+            }
+            if(c.value < heapSpace.size()){
+                heapSpace.set(c.value, value);
+            }else{
+                System.out.println("ERROR: The position of " + id + " in the heap is out of bounds. Invalid write. (Assign)");
+                System.exit(1);
+            }
+        }else{
+            c.value = value;
+        }
+    }
+
+    static int getInputData(){
+        int result;
+        if(S.currentToken() == Core.EOF){
+            System.out.println("ERROR: reach the end of the data file.");
+            System.exit(1);
+        }
+        result = S.getCONST();
+        S.nextToken();
+        return result;
+    }
+}
